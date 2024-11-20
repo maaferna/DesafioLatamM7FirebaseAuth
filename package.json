@@ -11,8 +11,13 @@
     "format": "prettier --write src/"
   },
   "dependencies": {
+    "@firebasegen/default-connector": "file:dataconnect-generated/js/default-connector",
+    "bootstrap": "^5.3.3",
+    "firebase": "^11.0.2",
+    "firebase-tools": "^13.25.0",
     "pinia": "^2.2.6",
-    "vue": "^3.5.12"
+    "vue": "^3.5.12",
+    "vue-router": "^4.4.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.14.0",
