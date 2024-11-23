@@ -1,15 +1,10 @@
-// src/router/index.js
-import { createRouter, createWebHistory } from 'vue-router'
-import { useUserStore } from '../stores/userStore'
-import Home from '../views/HomeView.vue'
-import Login from '../views/LoginView.vue'
-import SignUp from '../views/SignUpView.vue'
+import { createRouter, createWebHistory } from 'vue-router';
+import { auth } from '@/firebaseConfig';
+import Home from '../views/HomeView.vue';
+import Login from '../views/LoginView.vue';
+import SignUp from '../views/SignUpView.vue';
 
 const routes = [
-  {
-    path: '/',
-    redirect: '/home'
-  },
   {
     path: '/home',
     name: 'Home',
@@ -19,35 +14,52 @@ const routes = [
   {
     path: '/login',
     name: 'Login',
-    component: Login
+    component: Login,
+    meta: { requiresUnauth: true } 
   },
   {
     path: '/signup',
     name: 'SignUp',
-    component: SignUp
+    component: SignUp,
+    meta: { requiresUnauth: true }  
+  },
+  { 
+    path: '/', 
+    redirect: '/home'  
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    redirect: '/home'  
   }
-]
+];
 
 const router = createRouter({
   history: createWebHistory(),
   routes
-})
+});
 
-router.beforeEach((to, from, next) => {
-  const userStore = useUserStore()
-  
-  if (to.matched.some(record => record.meta.requiresAuth)) {
-    if (!userStore.isAuthenticated) {
-      next({
-        path: '/login',
-        query: { redirect: to.fullPath }
-      })
-    } else {
-      next()
-    }
+router.beforeEach(async (to, from, next) => {
+  const currentUser = auth.currentUser;
+  const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
+  const requiresUnauth = to.matched.some(record => record.meta.requiresUnauth);
+
+  await new Promise(resolve => {
+    const unsubscribe = auth.onAuthStateChanged(user => {
+      unsubscribe();
+      resolve(user);
+    });
+  });
+
+  if (requiresAuth && !currentUser) {
+    next({
+      path: '/login',
+      query: { redirect: to.fullPath }
+    });
+  } else if (requiresUnauth && currentUser) {
+    next('/home');
   } else {
-    next()
+    next();
   }
-})
+});
 
-export default router
+export default router;

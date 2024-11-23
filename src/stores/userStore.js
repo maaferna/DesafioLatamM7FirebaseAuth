@@ -1,80 +1,79 @@
-import { defineStore } from 'pinia'
-import { ref } from 'vue'
-import { auth } from '../firebaseConfig'
-import { 
+import { defineStore } from 'pinia';
+import { auth } from '../firebaseConfig';
+import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged
-} from 'firebase/auth'
-import { useRouter } from 'vue-router'
+} from 'firebase/auth';
 
-export const useUserStore = defineStore('user', () => {
-  const user = ref(null)
-  const error = ref(null)
-  const isAuthenticated = ref(false)
-  const loading = ref(true)
-  const router = useRouter()
+export const useUserStore = defineStore('user', {
+  state: () => ({
+    user: null,
+    error: null,
+    isAuthenticated: false,
+    loading: true,
+  }),
 
-  const initializeAuth = () => {
-    return new Promise((resolve) => {
-      const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-        user.value = currentUser
-        isAuthenticated.value = !!currentUser
-        loading.value = false
-        resolve(currentUser)
+  actions: {
+    initializeAuth() {
+      return new Promise((resolve) => {
+        const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+          this.user = currentUser;
+          this.isAuthenticated = !!currentUser;
+          this.loading = false;
+          unsubscribe(); 
+          resolve(currentUser);
+        });
+      });
+    },
 
-      })
-    })
-  }
+    async signUp(email, password, router) {
+      try {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        this.user = userCredential.user;
+        this.isAuthenticated = true;
+        this.error = null;
+        
+        const redirectPath = router.currentRoute.value.query.redirect || '/home';
+        await router.replace(redirectPath);
+        
+        return { success: true };
+      } catch (err) {
+        this.error = err.message;
+        throw err;
+      }
+    },
 
-  const signUp = async (email, password) => {
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password)
-      user.value = userCredential.user
-      isAuthenticated.value = true
-      error.value = null
-      router.push('/home')
-    } catch (err) {
-      error.value = err.message
-      console.error('Sign Up Error:', err)
-    }
-  }
+    async login(email, password, router) {
+      try {
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        this.user = userCredential.user;
+        this.isAuthenticated = true;
+        this.error = null;
+        
+        const redirectPath = router.currentRoute.value.query.redirect || '/home';
+        await router.replace(redirectPath);
+        
+        return { success: true };
+      } catch (err) {
+        this.error = err.message;
+        throw err;
+      }
+    },
 
-  const login = async (email, password) => {
-    try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password)
-      user.value = userCredential.user
-      isAuthenticated.value = true
-      error.value = null
-      router.push('/home')
-    } catch (err) {
-      error.value = err.message
-      console.error('Login Error:', err)
-    }
-  }
-
-  const logout = async () => {
-    try {
-      await signOut(auth)
-      user.value = null
-      isAuthenticated.value = false
-      error.value = null
-      router.push('/login')
-    } catch (err) {
-      error.value = err.message
-      console.error('Logout Error:', err)
-    }
-  }
-
-  return {
-    user,
-    error,
-    loading,
-    isAuthenticated,
-    initializeAuth,
-    signUp,
-    login,
-    logout
-  }
-})
+    async logout(router) {
+      try {
+        await signOut(auth);
+        this.user = null;
+        this.isAuthenticated = false;
+        this.error = null;
+        await router.push('/login');
+        return { success: true };
+      } catch (err) {
+        this.error = err.message;
+        throw err;
+      }
+    },
+  },
+});
